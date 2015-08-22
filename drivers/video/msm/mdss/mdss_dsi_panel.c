@@ -28,6 +28,7 @@
 #include <linux/gpio.h>
 #include <linux/interrupt.h>
 #include <mach/mmi_panel_notifier.h>
+#include <linux/lcd_notify.h>
 
 #include "mdss_dsi.h"
 #include "mdss_fb.h"
@@ -639,6 +640,9 @@ static int mdss_dsi_panel_cont_splash_on(struct mdss_panel_data *pdata)
 		mdss_dsi_sw_reset(pdata);
 
 	mmi_panel_notify(MMI_PANEL_EVENT_DISPLAY_ON, NULL);
+	/* trigger rmi4 init */
+	lcd_notifier_call_chain(LCD_EVENT_ON_START);
+	lcd_notifier_call_chain(LCD_EVENT_ON_END);
 
 #ifndef CONFIG_FB_MSM_MDSS_MDP3
 	if (pdata->panel_info.hs_cmds_post_init)
@@ -743,6 +747,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		return -EINVAL;
 	}
 
+	lcd_notifier_call_chain(LCD_EVENT_ON_START);
+
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
@@ -837,6 +843,8 @@ end:
 	} else
 		dropbox_count = 0;
 
+	lcd_notifier_call_chain(LCD_EVENT_ON_END);
+
 	pr_info("%s-. Pwr_mode(0x0A) = 0x%x\n", __func__, pwr_mode);
 
 	return 0;
@@ -855,6 +863,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
+
+	lcd_notifier_call_chain(LCD_EVENT_OFF_START);
 
 	mfd = pdata->mfd;
 	pr_info("%s+: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
@@ -893,6 +903,8 @@ disable_regs:
 
 	if (pdata->panel_info.dynamic_cabc_enabled)
 		pdata->panel_info.cabc_mode = CABC_OFF_MODE;
+
+	lcd_notifier_call_chain(LCD_EVENT_OFF_END);
 
 	pr_info("%s-:\n", __func__);
 
