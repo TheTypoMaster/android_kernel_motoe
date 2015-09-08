@@ -20,7 +20,7 @@
 #ifdef CONFIG_FSYNC
 #include <linux/moduleparam.h>
 
-bool fsync_enabled = true;
+bool fsync_enabled = false;
 module_param(fsync_enabled, bool, 0755);
 #endif
 
