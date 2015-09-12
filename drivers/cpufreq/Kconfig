@@ -143,6 +143,11 @@ config CPU_FREQ_DEFAULT_GOV_WAVE
 	select CPU_FREQ_GOV_WAVE
 	help
 
+config CPU_FREQ_DEFAULT_GOV_NIGHTMARE
+	bool "nightmare"
+	select CPU_FREQ_GOV_NIGHTMARE
+	help
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -247,6 +252,10 @@ config CPU_FREQ_GOV_WAVE
 	tristate "'wave' cpufreq governor"
 	depends on CPU_FREQ
 	help
+
+config CPU_FREQ_GOV_NIGHTMARE
+	tristate "'nightmare' cpufreq governor"
+	depends on CPU_FREQ
 
 config CPU_FREQ_GOV_CONSERVATIVE
 	tristate "'conservative' cpufreq governor"
