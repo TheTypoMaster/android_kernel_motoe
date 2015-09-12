@@ -72,7 +72,7 @@ static void __cpuinit asmp_work_fn(struct work_struct *work) {
 	unsigned int max_rate, up_rate, down_rate;
 	int nr_cpu_online;
 
-	if (enabled && !asmp_suspended) {
+	if ((enabled == 1) && !asmp_suspended) {
 		cycle++;
 
 		if (asmp_param.delay != delay0) {
@@ -138,8 +138,8 @@ static void asmp_power_suspend(struct power_suspend *h) {
 		return;
 
 	/* suspend main work thread */
-	cancel_delayed_work_sync(&asmp_work);
 	asmp_suspended = true;
+	cancel_delayed_work_sync(&asmp_work);
 
 	/* unplug online cpu cores */
 	if (asmp_param.scroff_single_core) {
@@ -186,7 +186,7 @@ static int __cpuinit set_enabled(const char *val, const struct kernel_param *kp)
 	unsigned int cpu;
 
 	ret = param_set_bool(val, kp);
-	if (enabled) {
+	if (enabled == 1) {
 		queue_delayed_work(asmp_workq, &asmp_work,
 				msecs_to_jiffies(asmp_param.delay));
 		pr_info(ASMP_TAG"enabled\n");
@@ -309,14 +309,14 @@ static int __init asmp_init(void) {
 	for_each_possible_cpu(cpu)
 		per_cpu(asmp_cpudata, cpu).times_hotplugged = 0;
 
+	register_power_suspend(&asmp_power_suspend_handler);
+
 	asmp_workq = alloc_workqueue("asmp", WQ_HIGHPRI, 0);
 	if (!asmp_workq)
 		return -ENOMEM;
 	INIT_DELAYED_WORK(&asmp_work, asmp_work_fn);
 	queue_delayed_work(asmp_workq, &asmp_work,
 			   msecs_to_jiffies(ASMP_STARTDELAY));
-
-	register_power_suspend(&asmp_power_suspend_handler);
 
 	asmp_kobject = kobject_create_and_add("autosmp", kernel_kobj);
 	if (asmp_kobject) {
