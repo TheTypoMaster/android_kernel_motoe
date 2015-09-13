@@ -61,8 +61,8 @@ static unsigned int min_sampling_rate;
 
 #define DEF_LATENCY_MULTIPLIER				(1000)
 #define DEF_MIN_LATENCY_MULTIPLIER			(100)
-#define DEF_SAMPLING_DOWN_FACTOR			(1)
-#define DEF_MAX_SAMPLING_DOWN_FACTOR		(10)
+#define DEF_SAMPLING_DOWN_FACTOR			(10)
+#define DEF_MAX_SAMPLING_DOWN_FACTOR		(100000)
 #define DEF_TRANSITION_LATENCY_LIMIT		(10 * 1000 * 1000)
 
 static void do_dbs_timer(struct work_struct *work);
@@ -589,7 +589,7 @@ static int cpufreq_governor_dbs(struct cpufreq_policy *policy,
 			}
 
 			min_sampling_rate = 10000;
-			dbs_tuners_ins.sampling_rate = 10000;
+			dbs_tuners_ins.sampling_rate = 25000;
 
 			cpufreq_register_notifier(
 					&dbs_cpufreq_notifier_block,
