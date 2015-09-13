@@ -97,7 +97,7 @@ static struct nightmare_tuners {
 	.freq_up_brake_at_min_freq = ATOMIC_INIT(30),
 	.freq_up_brake = ATOMIC_INIT(30),
 	.freq_step_dec = ATOMIC_INIT(10),
-	.freq_step_dec_at_max_freq = ATOMIC_INIT(10),
+	.freq_step_dec_at_max_freq = ATOMIC_INIT(20),
 };
 
 /************************** sysfs interface ************************/
