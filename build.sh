@@ -12,7 +12,7 @@ find -name "*.ko" -exec cp {} /home/ryanandri/android/clarity-cm12.1-condor-r1/s
 sleep 2
 
 # Remove Unneeded
-/home/ryanandri/android/linaro-4.9/bin/arm-linux-gnueabi-strip --strip-unneeded /home/ryanandri/android/clarity-cm12.1-condor-r1/system/lib/modules/*.ko
+/home/ryanandri/android/linaro-4.9.4/bin/arm-cortex_a7-linux-gnueabihf-strip --strip-unneeded /home/ryanandri/android/clarity-cm12.1-condor-r1/system/lib/modules/*.ko
 
 # move to proper place
 mv /home/ryanandri/android/clarity-cm12.1-condor-r1/system/lib/modules/wlan.ko /home/ryanandri/android/clarity-cm12.1-condor-r1/system/lib/modules/pronto/pronto_wlan.ko
