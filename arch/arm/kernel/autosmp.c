@@ -39,6 +39,8 @@ struct asmp_cpudata_t {
 
 static struct delayed_work asmp_work;
 static struct workqueue_struct *asmp_workq;
+static struct work_struct suspend_work;
+static struct work_struct resume_work;
 static DEFINE_PER_CPU(struct asmp_cpudata_t, asmp_cpudata);
 
 static struct asmp_param_struct {
@@ -131,7 +133,8 @@ static void __cpuinit asmp_work_fn(struct work_struct *work) {
 	queue_delayed_work(asmp_workq, &asmp_work, delay_jif);
 }
 
-static void asmp_power_suspend(struct power_suspend *h) {
+static void asmp_power_suspend(struct work_struct *work)
+{
 	unsigned int cpu;
 
 	if (enabled == 0)
@@ -152,7 +155,8 @@ static void asmp_power_suspend(struct power_suspend *h) {
 	pr_info(ASMP_TAG"suspended : total cpu %d\n", num_online_cpus());
 }
 
-static void __cpuinit asmp_power_resume(struct power_suspend *h) {
+static void __ref asmp_power_resume(struct work_struct *work)
+{
 	unsigned int cpu;
 
 	if (enabled == 0)
@@ -170,15 +174,26 @@ static void __cpuinit asmp_power_resume(struct power_suspend *h) {
 	}
 
 	/* resume main work thread */
+	INIT_DELAYED_WORK(&asmp_work, asmp_work_fn);
 	queue_delayed_work(asmp_workq, &asmp_work,
 			msecs_to_jiffies(asmp_param.delay));
 
 	pr_info(ASMP_TAG"resumed : total cpu %d\n", num_online_cpus());
 }
 
-static struct power_suspend __refdata asmp_power_suspend_handler = {
-	.suspend = asmp_power_suspend,
-	.resume = asmp_power_resume,
+static void __asmp_power_suspend(struct power_suspend *handler)
+{
+	schedule_work(&suspend_work);
+}
+
+static void __asmp_power_resume(struct power_suspend *handler)
+{
+	schedule_work(&resume_work);
+}
+
+static struct power_suspend asmp_power_suspend_handler = {
+	.suspend = __asmp_power_suspend,
+	.resume = __asmp_power_resume,
 };
 
 static int __cpuinit set_enabled(const char *val, const struct kernel_param *kp) {
@@ -314,7 +329,10 @@ static int __init asmp_init(void) {
 	asmp_workq = alloc_workqueue("asmp", WQ_HIGHPRI, 0);
 	if (!asmp_workq)
 		return -ENOMEM;
+
 	INIT_DELAYED_WORK(&asmp_work, asmp_work_fn);
+	INIT_WORK(&suspend_work, asmp_power_suspend);
+	INIT_WORK(&resume_work, asmp_power_resume);
 	queue_delayed_work(asmp_workq, &asmp_work,
 			   msecs_to_jiffies(ASMP_STARTDELAY));
 
