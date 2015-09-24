@@ -311,7 +311,7 @@ static int __init asmp_init(void) {
 
 	register_power_suspend(&asmp_power_suspend_handler);
 
-	asmp_workq = alloc_workqueue("asmp", WQ_HIGHPRI, 0);
+	asmp_workq = alloc_workqueue("asmp", WQ_FREEZABLE | WQ_UNBOUND, 1);
 	if (!asmp_workq)
 		return -ENOMEM;
 	INIT_DELAYED_WORK(&asmp_work, asmp_work_fn);
