@@ -26,7 +26,7 @@
 #include <linux/cpu.h>
 #include <linux/cpumask.h>
 #include <linux/hrtimer.h>
-#include <linux/powersuspend.h> 
+#include <linux/lcd_notify.h>
 
 #define DEBUG 0
 
@@ -41,6 +41,8 @@ static struct delayed_work asmp_work;
 static struct workqueue_struct *asmp_workq;
 static struct work_struct suspend_work;
 static struct work_struct resume_work;
+static struct notifier_block notif;
+
 static DEFINE_PER_CPU(struct asmp_cpudata_t, asmp_cpudata);
 
 static struct asmp_param_struct {
@@ -181,20 +183,16 @@ static void __ref asmp_power_resume(struct work_struct *work)
 	pr_info(ASMP_TAG"resumed : total cpu %d\n", num_online_cpus());
 }
 
-static void __asmp_power_suspend(struct power_suspend *handler)
+static int lcd_notifier_callback(struct notifier_block *this,
+					unsigned long event, void *data)
 {
-	schedule_work(&suspend_work);
-}
+	if (event == LCD_EVENT_ON_START)
+		schedule_work(&resume_work);
+	else if (event == LCD_EVENT_OFF_START)
+		schedule_work(&suspend_work);
 
-static void __asmp_power_resume(struct power_suspend *handler)
-{
-	schedule_work(&resume_work);
+	return NOTIFY_OK;
 }
-
-static struct power_suspend asmp_power_suspend_handler = {
-	.suspend = __asmp_power_suspend,
-	.resume = __asmp_power_resume,
-};
 
 static int __cpuinit set_enabled(const char *val, const struct kernel_param *kp) {
 	int ret;
@@ -324,11 +322,14 @@ static int __init asmp_init(void) {
 	for_each_possible_cpu(cpu)
 		per_cpu(asmp_cpudata, cpu).times_hotplugged = 0;
 
-	register_power_suspend(&asmp_power_suspend_handler);
-
 	asmp_workq = alloc_workqueue("asmp", WQ_FREEZABLE | WQ_UNBOUND, 1);
 	if (!asmp_workq)
 		return -ENOMEM;
+
+	notif.notifier_call = lcd_notifier_callback;
+	if (lcd_register_client(&notif)) {
+		return -EINVAL;
+	}
 
 	INIT_DELAYED_WORK(&asmp_work, asmp_work_fn);
 	INIT_WORK(&suspend_work, asmp_power_suspend);
