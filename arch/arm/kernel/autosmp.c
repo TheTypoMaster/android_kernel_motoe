@@ -28,22 +28,14 @@
 #include <linux/hrtimer.h>
 #include <linux/lcd_notify.h>
 
-#define DEBUG 0
-
 #define ASMP_TAG "AutoSMP: "
 #define ASMP_STARTDELAY 20000
-
-struct asmp_cpudata_t {
-	long long unsigned int times_hotplugged;
-};
 
 static struct delayed_work asmp_work;
 static struct workqueue_struct *asmp_workq;
 static struct work_struct suspend_work;
 static struct work_struct resume_work;
 static struct notifier_block notif;
-
-static DEFINE_PER_CPU(struct asmp_cpudata_t, asmp_cpudata);
 
 static struct asmp_param_struct {
 	unsigned int delay;
@@ -70,7 +62,8 @@ static unsigned long delay_jif = 0;
 static int enabled __read_mostly = 1;
 static bool asmp_suspended = false;
 
-static void __cpuinit asmp_work_fn(struct work_struct *work) {
+static void __cpuinit asmp_work_fn(struct work_struct *work)
+{
 	unsigned int cpu = 0, slow_cpu = 0;
 	unsigned int rate, cpu0_rate, slow_rate = UINT_MAX, fast_rate;
 	unsigned int max_rate, up_rate, down_rate;
@@ -117,9 +110,6 @@ static void __cpuinit asmp_work_fn(struct work_struct *work) {
 			cpu = cpumask_next_zero(0, cpu_online_mask);
 			cpu_up(cpu);
 			cycle = 0;
-#if DEBUG
-			pr_info(ASMP_TAG"CPU[%d] on\n", cpu);
-#endif
 		}
 	/* unplug slowest core if all online cores are under down_rate limit */
 	} else if (slow_cpu && (fast_rate < down_rate)) {
@@ -127,10 +117,6 @@ static void __cpuinit asmp_work_fn(struct work_struct *work) {
 		    (cycle >= asmp_param.cycle_down)) {
  			cpu_down(slow_cpu);
 			cycle = 0;
-#if DEBUG
-			pr_info(ASMP_TAG"CPU[%d] off\n", slow_cpu);
-			per_cpu(asmp_cpudata, cpu).times_hotplugged += 1;
-#endif
 		}
 	} /* else do nothing */
 
@@ -196,7 +182,8 @@ static int lcd_notifier_callback(struct notifier_block *this,
 	return NOTIFY_OK;
 }
 
-static int __cpuinit set_enabled(const char *val, const struct kernel_param *kp) {
+static int __cpuinit set_enabled(const char *val, const struct kernel_param *kp)
+{
 	int ret;
 	unsigned int cpu;
 
@@ -208,7 +195,7 @@ static int __cpuinit set_enabled(const char *val, const struct kernel_param *kp)
 	} else {
 		cancel_delayed_work_sync(&asmp_work);
 		for_each_present_cpu(cpu) {
-			if (num_online_cpus() >= nr_cpu_ids)
+			if (num_online_cpus() >= asmp_param.max_cpus)
 				break;
 			if (!cpu_online(cpu))
 				cpu_up(cpu);
@@ -290,39 +277,11 @@ static struct attribute_group asmp_attr_group = {
 	.attrs = asmp_attributes,
 	.name = "conf",
 };
-#if DEBUG
-static ssize_t show_times_hotplugged(struct kobject *a,
-					struct attribute *b, char *buf) {
-	ssize_t len = 0;
-	int cpu;
-
-	for_each_possible_cpu(cpu) {
-		len += sprintf(buf + len, "%i %llu\n", cpu,
-			per_cpu(asmp_cpudata, cpu).times_hotplugged);
-	}
-	return len;
-}
-define_one_global_ro(times_hotplugged);
-
-static struct attribute *asmp_stats_attributes[] = {
-	&times_hotplugged.attr,
-	NULL
-};
-
-static struct attribute_group asmp_stats_attr_group = {
-	.attrs = asmp_stats_attributes,
-	.name = "stats",
-};
-#endif
 /****************************** SYSFS END ******************************/
 
-static int __init asmp_init(void) {
-	unsigned int cpu;
+static int __init asmp_init(void)
+{
 	int rc;
-
-	asmp_param.max_cpus = nr_cpu_ids;
-	for_each_possible_cpu(cpu)
-		per_cpu(asmp_cpudata, cpu).times_hotplugged = 0;
 
 	asmp_workq = alloc_workqueue("asmp", WQ_FREEZABLE | WQ_UNBOUND, 1);
 	if (!asmp_workq)
@@ -344,11 +303,6 @@ static int __init asmp_init(void) {
 		rc = sysfs_create_group(asmp_kobject, &asmp_attr_group);
 		if (rc)
 			pr_warn(ASMP_TAG"ERROR, create sysfs group");
-#if DEBUG
-		rc = sysfs_create_group(asmp_kobject, &asmp_stats_attr_group);
-		if (rc)
-			pr_warn(ASMP_TAG"ERROR, create sysfs stats group");
-#endif
 	} else
 		pr_warn(ASMP_TAG"ERROR, create sysfs kobj");
 
