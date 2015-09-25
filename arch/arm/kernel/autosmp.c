@@ -46,6 +46,7 @@ static struct asmp_param_struct {
 	unsigned int cpufreq_down;
 	unsigned int cycle_up;
 	unsigned int cycle_down;
+	bool booted;
 } asmp_param = {
 	.delay = 100,
 	.scroff_single_core = true,
@@ -55,6 +56,7 @@ static struct asmp_param_struct {
 	.cpufreq_down = 30,
 	.cycle_up = 1,
 	.cycle_down = 1,
+	.booted = false,
 };
 
 static unsigned int cycle = 0, delay0 = 0;
@@ -175,7 +177,10 @@ static int lcd_notifier_callback(struct notifier_block *this,
 					unsigned long event, void *data)
 {
 	if (event == LCD_EVENT_ON_START)
-		schedule_work(&resume_work);
+		if (!asmp_param.booted)
+			asmp_param.booted = true;
+		else
+			schedule_work(&resume_work);
 	else if (event == LCD_EVENT_OFF_START)
 		schedule_work(&suspend_work);
 
